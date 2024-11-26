@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 #
 # Copyright (c) 2017 Toyo
-# Copyright (c) 2018-2020 P3TERX <https://p3terx.com>
+# Copyright (c) 2018-2020 p3terx <https://p3terx.com>
 #
 # This is free software, licensed under the MIT License.
 # See /LICENSE for more information.
 #
-# https://github.com/P3TERX/aria2.sh
+# https://github.com/p3terx/aria2.sh
 # Description: Aria2 One-click installation management script
 # System Required: CentOS/Debian/Ubuntu
 # Version: 2.7.4
@@ -77,12 +77,11 @@ check_pid() {
 check_new_ver() {
     aria2_new_ver=$(
         {
-            wget -t2 -T3 -qO- "https://api.github.com/repos/P3TERX/Aria2-Pro-Core/releases/latest" ||
-                wget -t2 -T3 -qO- "https://gh-api.p3terx.com/repos/P3TERX/Aria2-Pro-Core/releases/latest"
+            wget -t2 -T3 -qO- "https://api.github.com/repos/Btu2023V/Aria2-Pro-Core/releases/latest"
         } | grep -o '"tag_name": ".*"' | head -n 1 | cut -d'"' -f4
     )
     if [[ -z ${aria2_new_ver} ]]; then
-        echo -e "${Error} Aria2 最新版本获取失败，请手动获取最新版本号[ https://github.com/P3TERX/Aria2-Pro-Core/releases ]"
+        echo -e "${Error} Aria2 最新版本获取失败，请手动获取最新版本号[ https://github.com/Btu2023V/Aria2-Pro-Core/releases ]"
         read -e -p "请输入版本号:" aria2_new_ver
         [[ -z "${aria2_new_ver}" ]] && echo "取消..." && exit 1
     fi
@@ -116,10 +115,9 @@ Download_aria2() {
         echo -e "${Info} 删除旧版 Aria2 二进制文件..."
         rm -vf $(which aria2c)
     done
-    DOWNLOAD_URL="https://github.com/P3TERX/Aria2-Pro-Core/releases/download/${aria2_new_ver}/aria2-${aria2_new_ver%_*}-static-linux-${ARCH}.tar.gz"
+    DOWNLOAD_URL="https://github.com/Btu2023V/Aria2-Pro-Core/releases/download/${aria2_new_ver}/aria2-${aria2_new_ver%_*}-static-linux-${ARCH}.tar.gz"
     {
-        wget -t2 -T3 -O- "${DOWNLOAD_URL}" ||
-            wget -t2 -T3 -O- "https://gh-acc.p3terx.com/${DOWNLOAD_URL}"
+        wget -t2 -T3 -O- "${DOWNLOAD_URL}"
     } | tar -zx
     [[ ! -s "aria2c" ]] && echo -e "${Error} Aria2 下载失败 !" && exit 1
     [[ ${update_dl} = "update" ]] && rm -f "${aria2c}"
@@ -140,6 +138,7 @@ script.conf
 rclone.env
 upload.sh
 delete.sh
+tracker.sh
 dht.dat
 dht6.dat
 move.sh
@@ -168,9 +167,7 @@ LICENSE
 }
 Service_aria2() {
     if [[ ${release} = "centos" ]]; then
-        wget -N -t2 -T3 "https://raw.githubusercontent.com/P3TERX/aria2.sh/master/service/aria2_centos" -O /etc/init.d/aria2 ||
-            wget -N -t2 -T3 "https://cdn.jsdelivr.net/gh/P3TERX/aria2.sh@master/service/aria2_centos" -O /etc/init.d/aria2 ||
-            wget -N -t2 -T3 "https://gh-raw.p3terx.com/P3TERX/aria2.sh/master/service/aria2_centos" -O /etc/init.d/aria2
+        wget -N -t2 -T3 "https://raw.githubusercontent.com/Btu2023V/aria2.sh/master/service/aria2_centos" -O /etc/init.d/aria2
         [[ ! -s /etc/init.d/aria2 ]] && {
             echo -e "${Error} Aria2服务 管理脚本下载失败 !"
             exit 1
@@ -179,9 +176,7 @@ Service_aria2() {
         chkconfig --add aria2
         chkconfig aria2 on
     else
-        wget -N -t2 -T3 "https://raw.githubusercontent.com/P3TERX/aria2.sh/master/service/aria2_debian" -O /etc/init.d/aria2 ||
-            wget -N -t2 -T3 "https://cdn.jsdelivr.net/gh/P3TERX/aria2.sh@master/service/aria2_debian" -O /etc/init.d/aria2 ||
-            wget -N -t2 -T3 "https://gh-raw.p3terx.com/P3TERX/aria2.sh/master/service/aria2_debian" -O /etc/init.d/aria2
+        wget -N -t2 -T3 "https://raw.githubusercontent.com/Btu2023V/aria2.sh/master/service/aria2_debian" -O /etc/init.d/aria2
         [[ ! -s /etc/init.d/aria2 ]] && {
             echo -e "${Error} Aria2服务 管理脚本下载失败 !"
             exit 1
@@ -218,12 +213,6 @@ Install_aria2() {
     Service_aria2
     Read_config
     aria2_RPC_port=${aria2_port}
-    echo -e "${Info} 开始设置 iptables 防火墙..."
-    Set_iptables
-    echo -e "${Info} 开始添加 iptables 防火墙规则..."
-    Add_iptables
-    echo -e "${Info} 开始保存 iptables 防火墙规则..."
-    Save_iptables
     echo -e "${Info} 开始创建 下载目录..."
     mkdir -p ${download_path}
     echo -e "${Info} 所有步骤 安装完毕，开始启动..."
@@ -342,9 +331,6 @@ Set_aria2_RPC_port() {
             echo -e "\nrpc-listen-port=${aria2_RPC_port}" >>${aria2_conf}
             if [[ $? -eq 0 ]]; then
                 echo -e "${Info} RPC 端口修改成功！新端口为：${Green_font_prefix}${aria2_RPC_port}${Font_color_suffix}(配置文件中缺少相关选项参数，已自动加入配置文件底部)"
-                Del_iptables
-                Add_iptables
-                Save_iptables
                 if [[ ${read_123} != "1" ]]; then
                     Restart_aria2
                 fi
@@ -355,9 +341,6 @@ Set_aria2_RPC_port() {
             sed -i 's/^rpc-listen-port='${aria2_port}'/rpc-listen-port='${aria2_RPC_port}'/g' ${aria2_conf}
             if [[ $? -eq 0 ]]; then
                 echo -e "${Info} RPC 端口修改成功！新端口为：${Green_font_prefix}${aria2_RPC_port}${Font_color_suffix}"
-                Del_iptables
-                Add_iptables
-                Save_iptables
                 if [[ ${read_123} != "1" ]]; then
                     Restart_aria2
                 fi
@@ -434,7 +417,7 @@ Set_aria2_vim_conf() {
  ${Green_font_prefix}1.${Font_color_suffix} 默认使用 nano 文本编辑器打开
  ${Green_font_prefix}2.${Font_color_suffix} 退出并保存文件：按 ${Green_font_prefix}Ctrl+X${Font_color_suffix} 组合键，输入 ${Green_font_prefix}y${Font_color_suffix} ，按 ${Green_font_prefix}Enter${Font_color_suffix} 键
  ${Green_font_prefix}3.${Font_color_suffix} 退出不保存文件：按 ${Green_font_prefix}Ctrl+X${Font_color_suffix} 组合键，输入 ${Green_font_prefix}n${Font_color_suffix}
- ${Green_font_prefix}4.${Font_color_suffix} nano 详细使用教程：${Green_font_prefix}https://p3terx.com/archives/linux-nano-tutorial.html${Font_color_suffix}
+ ${Green_font_prefix}4.${Font_color_suffix} nano 详细使用教程：${Green_font_prefix}https://Btu2023V.com/archives/linux-nano-tutorial.html${Font_color_suffix}
  ${Green_font_prefix}5.${Font_color_suffix} 配置文件有中文注释，若语言设置有问题会导致中文乱码
  "
     read -e -p "按任意键继续，按 Ctrl+C 组合键取消" var
@@ -443,9 +426,6 @@ Set_aria2_vim_conf() {
     if [[ ${aria2_port_old} != ${aria2_port} ]]; then
         aria2_RPC_port=${aria2_port}
         aria2_port=${aria2_port_old}
-        Del_iptables
-        Add_iptables
-        Save_iptables
     fi
     if [[ ${aria2_dir_old} != ${aria2_dir} ]]; then
         mkdir -p ${aria2_dir}
@@ -467,9 +447,6 @@ Reset_aria2_conf() {
     if [[ ${aria2_port_old} != ${aria2_port} ]]; then
         aria2_RPC_port=${aria2_port}
         aria2_port=${aria2_port_old}
-        Del_iptables
-        Add_iptables
-        Save_iptables
     fi
     Restart_aria2
 }
@@ -614,8 +591,6 @@ Uninstall_aria2() {
         check_pid
         [[ ! -z $PID ]] && kill -9 ${PID}
         Read_config "un"
-        Del_iptables
-        Save_iptables
         rm -rf "${aria2c}"
         rm -rf "${aria2_conf_dir}"
         if [[ ${release} = "centos" ]]; then
@@ -629,35 +604,8 @@ Uninstall_aria2() {
         echo && echo "卸载已取消..." && echo
     fi
 }
-Add_iptables() {
-    iptables -I INPUT -m state --state NEW -m tcp -p tcp --dport ${aria2_RPC_port} -j ACCEPT
-    iptables -I INPUT -m state --state NEW -m tcp -p tcp --dport ${aria2_bt_port} -j ACCEPT
-    iptables -I INPUT -m state --state NEW -m udp -p udp --dport ${aria2_dht_port} -j ACCEPT
-}
-Del_iptables() {
-    iptables -D INPUT -m state --state NEW -m tcp -p tcp --dport ${aria2_port} -j ACCEPT
-    iptables -D INPUT -m state --state NEW -m tcp -p tcp --dport ${aria2_bt_port} -j ACCEPT
-    iptables -D INPUT -m state --state NEW -m udp -p udp --dport ${aria2_dht_port} -j ACCEPT
-}
-Save_iptables() {
-    if [[ ${release} == "centos" ]]; then
-        service iptables save
-    else
-        iptables-save >/etc/iptables.up.rules
-    fi
-}
-Set_iptables() {
-    if [[ ${release} == "centos" ]]; then
-        service iptables save
-        chkconfig --level 2345 iptables on
-    else
-        iptables-save >/etc/iptables.up.rules
-        echo -e '#!/bin/bash\n/sbin/iptables-restore < /etc/iptables.up.rules' >/etc/network/if-pre-up.d/iptables
-        chmod +x /etc/network/if-pre-up.d/iptables
-    fi
-}
 Update_Shell() {
-    sh_new_ver=$(wget -qO- -t1 -T3 "https://raw.githubusercontent.com/P3TERX/aria2.sh/master/aria2.sh" | grep 'sh_ver="' | awk -F "=" '{print $NF}' | sed 's/\"//g' | head -1) && sh_new_type="github"
+    sh_new_ver=$(wget -qO- -t1 -T3 "https://raw.githubusercontent.com/Btu2023V/aria2.sh/master/aria2.sh" | grep 'sh_ver="' | awk -F "=" '{print $NF}' | sed 's/\"//g' | head -1) && sh_new_type="github"
     [[ -z ${sh_new_ver} ]] && echo -e "${Error} 无法链接到 Github !" && exit 0
     if [[ -e "/etc/init.d/aria2" ]]; then
         rm -rf /etc/init.d/aria2
@@ -667,11 +615,11 @@ Update_Shell() {
     if [[ -n $(crontab_update_status) ]]; then
         crontab_update_stop
     fi
-    wget -N "https://raw.githubusercontent.com/P3TERX/aria2.sh/master/aria2.sh" && chmod +x aria2.sh
+    wget -N "https://raw.githubusercontent.com/Btu2023V/aria2.sh/master/aria2.sh" && chmod +x aria2.sh
     echo -e "脚本已更新为最新版本[ ${sh_new_ver} ] !(注意：因为更新方式为直接覆盖当前运行的脚本，所以可能下面会提示一些报错，无视即可)" && exit 0
 }
 
-echo && echo -e " Aria2 一键安装管理脚本 增强版 ${Red_font_prefix}[v${sh_ver}]${Font_color_suffix} by \033[1;35mP3TERX.COM\033[0m
+echo && echo -e " Aria2 一键安装管理脚本 增强版 ${Red_font_prefix}[v${sh_ver}]${Font_color_suffix} by \033[1;35mBtu2023V.COM\033[0m
  
  ${Green_font_prefix} 0.${Font_color_suffix} 升级脚本
  ———————————————————————
